@@ -1,0 +1,10 @@
+# Copy this to .private-terms and fill in the terms that must never be published.
+# .private-terms is gitignored. This example file is not, and must stay generic.
+#
+# One term per line. Matching is case-insensitive and literal, not regex.
+# Include: family names, your town and county, employer and client names,
+# case or matter numbers, email addresses, phone numbers, home directory paths.
+
+YourSurname
+YourTown
+your.email@example.com
