@@ -1,0 +1,7 @@
+# One claim per line. Lines starting with # are ignored.
+# These test the synthetic sample set. Replace with your own.
+Defendant produced documents on April 19
+Defendant responded to the request for production by the April 3 deadline
+Counsel conferred by telephone before filing the motion
+Exhibit C was produced with the April production
+The parties attended mediation in June

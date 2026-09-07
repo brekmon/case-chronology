@@ -88,16 +88,69 @@ Those are never silently omitted, because a gate that quietly skips a check
 teaches you to trust it about things it never looked at. Naming them is the half
 of the tool that keeps the other half honest.
 
+### `chronology.py` — every date, with its citation
+
+```bash
+python chronology.py ingest.json -o chronology.md
+```
+
+Extracts every date in the record, sorted, each carrying the document and page
+it came from.
+
+**The point of it is the dates it refuses to place.** `03/04/2024` is March 4th
+in the United States and April 3rd almost everywhere else. Both readings are
+valid. Most extractors pick one silently, and a chronology built on a silent
+guess is worse than none, because it looks authoritative while being a month
+wrong. Ambiguous numeric dates are listed separately and kept off the timeline
+until you resolve them and re-run with `--monthfirst` or `--dayfirst`. The
+assumption you chose is printed at the top of the output.
+
+### `claims.py` — assert something, see if the record backs it
+
+```bash
+python claims.py ingest.json claims.txt -o claims.md
+```
+
+| Verdict | Meaning |
+|---|---|
+| SUPPORTED | passages back this up |
+| CONTRADICTED | passages near your terms carry a negation |
+| DISPUTED | both were found |
+| **UNSUPPORTED** | **nothing in the record speaks to this at all** |
+
+**The fourth verdict is the whole reason this exists.** Most retrieval tools
+return nothing when they find nothing, and a reader reads an empty result as
+"there is nothing there". But "the record does not address this", "I could not
+find it" and "you asked badly" all look identical when a tool returns an empty
+list. So UNSUPPORTED is stated out loud, every time.
+
+The matching is deliberately transparent: term overlap, with the matched terms
+printed on every hit. In a legal setting you have to be able to say *why* a
+passage came back. A simple matcher you can audit beats a black box that returns
+a confident ranking you cannot inspect.
+
+It also **refuses to run if your claims file was itself ingested as evidence.**
+That guard exists because it happened during development: the example claims sat
+inside the samples folder, ingest read them as a document, and every claim came
+back SUPPORTED by a file that was just the questions written down.
+
+
 ---
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
-python samples/make_samples.py          # generate the synthetic document set
+python samples/make_samples.py                        # synthetic document set
 python ingest.py samples -o ingest.json
-python coverage.py ingest.json          # will fail, on purpose
+python coverage.py ingest.json                        # will fail, on purpose
+python chronology.py ingest.json -o chronology.md
+python claims.py ingest.json claims.example.txt -o claims.md
 ```
+
+Keep your claims file OUTSIDE the folder you ingest. `claims.py` will stop you
+if you forget, but the tidier habit is to never put working files in with
+evidence.
 
 ---
 
@@ -139,13 +192,10 @@ documents: redaction failures are common and a repository is permanent.
 
 ## Planned
 
-- `chronology.py` — every date with surrounding context and a citation
-- `claims.py` — assert a fact, get supporting and contradicting passages, and a
-  verdict of SUPPORTED, CONTRADICTED or **UNSUPPORTED**. The third state matters
-  most: most tools return nothing and let the reader assume nothing was found
-  because nothing was there
-- `disclosure_diff.py` — compare two versions of a financial statement
+- `disclosure_diff.py` — compare two versions of a financial statement and
+  surface every line that appeared, vanished or changed
 - `redact.py` — strip names, addresses and account numbers before sharing
+- OCR, so scanned pages can be read rather than only detected
 
 ## Licence
 

@@ -9,10 +9,19 @@ samples/*.pdf
 samples/*.docx
 samples/*.png
 
-# Ingest output can contain the full text of whatever was read. Never commit it.
+# TOOL OUTPUT. Every one of these can contain text extracted from whatever was
+# ingested. On a real matter they would carry privileged content straight into a
+# commit, so none of them are ever tracked. This list is not optional.
 ingest.json
 *.ingest.json
 coverage.txt
+chronology.md
+claims.md
+*.chronology.md
+*.claims.md
+
+# Your real claims file. claims.example.txt is the only one that ships.
+claims.txt
 
 # Personal terms for privacy_check.py. Never commit this.
 .private-terms
