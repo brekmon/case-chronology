@@ -1,0 +1,88 @@
+name: CI
+
+# Every push and every pull request. A gate that only runs when someone
+# remembers to run it is not a gate.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: tests (python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Unit tests
+        run: pytest
+
+  pipeline:
+    name: end-to-end on the synthetic corpus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      # The corpus is generated, never committed, so CI builds its own inputs and
+      # no real document ever has to exist for this to run.
+      - name: Generate the synthetic corpus
+        run: python samples/make_samples.py
+
+      - name: Ingest
+        run: python ingest.py samples -o ingest.json
+
+      # Sample 04 is a scanned page with no text layer, included on purpose. The
+      # gate MUST fail on it. A passing gate here would mean the check had stopped
+      # working, so the success condition of this step is a non-zero exit.
+      - name: Coverage gate must FAIL on the deliberate unread scan
+        run: |
+          if python coverage.py ingest.json > coverage.txt; then
+            echo "::error::The coverage gate passed on a corpus containing an unread scan."
+            cat coverage.txt
+            exit 1
+          fi
+          grep -q "UNREAD SCAN" coverage.txt || {
+            echo "::error::Gate failed, but not for the expected reason."; cat coverage.txt; exit 1; }
+          echo "Gate correctly refused to certify coverage."
+
+      - name: Chronology
+        run: |
+          python chronology.py ingest.json -o chronology.md --monthfirst
+          grep -q "2024-03-04" chronology.md
+
+      - name: Claims
+        run: |
+          python claims.py ingest.json claims.example.txt -o claims.md
+          grep -q "UNSUPPORTED" claims.md
+
+      # NOTE: privacy_check.py is deliberately NOT run here. It needs .private-terms,
+      # which must never be committed, and seeding it from the .example would make
+      # the gate flag the example file itself. The enforcement that CAN run without
+      # secrets lives in tests/test_privacy.py, which fails the build if any case
+      # artifact is ever tracked by git.

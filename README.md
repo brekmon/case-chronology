@@ -1,5 +1,7 @@
 # case-chronology
 
+[![CI](https://github.com/brekmon/case-chronology/actions/workflows/ci.yml/badge.svg)](https://github.com/brekmon/case-chronology/actions/workflows/ci.yml)
+
 Tooling for reading a folder of legal documents and refusing to assert anything
 the documents do not support.
 
@@ -187,6 +189,42 @@ documents: redaction failures are common and a repository is permanent.
 - **Table structure is not preserved.** Characters extract; the meaning of a row
   often does not. This is on the manual checklist for that reason.
 - **Nothing here knows what was never produced.** No tool can.
+
+---
+
+## Tests
+
+```
+pip install -r requirements.txt -r requirements-dev.txt
+pytest
+```
+
+75 tests. They run on every push against Python 3.10 through 3.13, and the
+weight is deliberately uneven, because the failures worth catching here are not
+crashes.
+
+- **Date ambiguity** is tested hardest. `03/04/2026` is 4 March to half the
+  world and 3 April to the other half, and reading it the wrong way round raises
+  nothing at all: it produces a chronology that is internally consistent,
+  properly cited, and wrong. The tests pin every branch, including that an
+  unresolvable date is held off the timeline instead of guessed at, and that an
+  impossible date is dropped rather than quietly clamped into a real one.
+- **Negation handling**, because term overlap alone would report "the respondent
+  did not produce the statements" as *support* for the claim that they did.
+- **The coverage gate**, from the other direction: each test builds a specific
+  way a document set can be silently incomplete — a page count that does not
+  match the container, a scanned page with no text layer, a file that was never
+  ingested — and asserts the gate catches it. One test asserts a clean set
+  produces nothing, so a gate that always failed could not pass the suite.
+- **What git is allowed to track.** This is a legal-document tool published in
+  the open, so "no case material is committed" cannot be left to habit. CI fails
+  the build if `ingest.json`, `chronology.md`, `claims.md`, `.private-terms` or
+  any sample document is ever tracked.
+
+CI also runs the whole pipeline end to end on the generated corpus. That job
+requires the coverage gate to **fail**, because sample 04 is a scanned page
+included on purpose. A gate that passed there would mean the check had stopped
+working.
 
 ---
 
