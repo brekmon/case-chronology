@@ -9,6 +9,8 @@ Note the deliberately modest contract: these verdicts mean "text near your terms
 was found", not "this is true". The tests assert the tool's actual behaviour,
 including where it is blunt, rather than pretending it reasons.
 """
+import os
+
 import pytest
 
 from claims import MIN_TERMS, assess, has_negation, passages, terms
@@ -47,6 +49,35 @@ class TestNegationDetection:
 
     def test_plain_assertion_has_none(self):
         assert has_negation("The respondent produced the statements.") is None
+
+    def test_the_most_specific_negation_wins(self):
+        """'did not' beats the bare 'not' it contains. Both are present in this
+        sentence, so something has to decide, and it must decide the same way
+        every run."""
+        assert has_negation("The respondent did not produce the statements.") == "did not"
+        assert has_negation("Counsel has not received the exhibit.") == "has not"
+
+    def test_result_is_deterministic_across_processes(self):
+        """Regression, caught by CI on 2026-09-25. has_negation iterated a set,
+        whose order is randomised per process, so Python 3.11 returned 'not'
+        where 3.10 and 3.12 returned 'did not' for the same sentence. Identical
+        input must produce identical output or nothing here is verifiable."""
+        import subprocess
+        import sys
+
+        code = (
+            "import sys; sys.path.insert(0, %r);"
+            "from claims import has_negation;"
+            "print(has_negation('The respondent did not produce the statements.'))"
+            % os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
+        seen = set()
+        for seed in ("0", "1", "42", "12345"):
+            env = dict(os.environ, PYTHONHASHSEED=seed)
+            out = subprocess.run([sys.executable, "-c", code], capture_output=True,
+                                 text=True, env=env)
+            seen.add(out.stdout.strip())
+        assert seen == {"did not"}, "answer varied with hash seed: %s" % seen
 
     def test_matching_is_whole_word(self):
         # "nothing" contains "not"; "cannot" contains "no". Substring matching here

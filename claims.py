@@ -78,9 +78,19 @@ def passages(report):
     return out
 
 
+# Longest first, then alphabetically. Two reasons, and the first one is a bug fix:
+# iterating NEGATIONS directly walks a SET, whose order changes between processes
+# because Python randomises string hashing. "did not produce" contains both "not"
+# and "did not", so the same sentence could report either one depending on the
+# run. A tool that exists to make text verifiable cannot give different answers
+# to the same question. Sorting also means the most specific phrase wins, so a
+# reader sees "did not" rather than the less informative "not".
+NEGATIONS_BY_SPECIFICITY = sorted(NEGATIONS, key=lambda n: (-len(n), n))
+
+
 def has_negation(sentence):
     low = " " + sentence.lower() + " "
-    for n in NEGATIONS:
+    for n in NEGATIONS_BY_SPECIFICITY:
         if f" {n} " in low:
             return n
     return None
